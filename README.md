@@ -33,4 +33,4 @@ pip install numpy
 pip install sqlite3
 
 # Usage
-jupyter-notebook --no-browser
+python3 my_m_and_a.py
