@@ -1,28 +1,29 @@
 import sqlite3
 import csv
-import pandas as pd 
+import pandas as pd
+from io import StringIO
 
 def sql_to_csv(database, table_name):
+    # Connect to the database
     connection = sqlite3.connect(database)
-    curs = connection.cursor()
-    select = f"SELECT * FROM {table_name};"
-    request = pd.read_sql_query(select, connection)
-    request.to_csv("list_fault_lines.csv", index=False)
-    with open("list_fault_lines.csv", "r") as file:
-        all_results = file.read()
-    return all_results[:-1]
+    cursor = connection.cursor()
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    column_names = [row[1] for row in cursor.fetchall()]
+    cursor.execute(f"SELECT * FROM {table_name}")
+    rows = cursor.fetchall()
+    csv_string = ','.join(column_names) + '\n'
+    
+    for row in rows:
+        csv_string += ','.join(map(str, row)) + '\n'
 
-def csv_to_sql(csv_content, database, table_name):
-    for_description = []
-    csv_read = pd.read_csv(csv_content)
-    for_iloc = csv_read.iloc[:].values
-    connected = sqlite3.connect(database)
-    curs = connected.cursor()
-    curs.execute(f"CREATE TABLE {table_name} ('Volcano Name', 'Country', 'Type', 'Latitude (dd)', 'Longitude (dd)', 'Elevation (m)')")
-    curs.executemany(f"INSERT INTO {table_name} VALUES (?, ?, ?, ?, ?, ?)", for_iloc)
-    connected.commit()
-    curs.execute(f"SELECT * FROM {table_name}")
-    for i in curs.description:
-        for_description.append(i)
-    connected.close()
-    return for_description
+    connection.close()
+    csv_string = csv_string.strip()
+    return csv_string
+
+def csv_to_sql(csv_content: str, database_name: str, table_name: str) -> None:
+    data = pd.read_csv(csv_content)
+    
+    # Connect to the SQLite database
+    with sqlite3.connect(database_name) as conn:
+        # Insert the data into the specified table in the database
+        data.to_sql(table_name, conn, if_exists='replace', index=False)
